@@ -31,7 +31,7 @@ In order to properly tokenize guitar hero charts, we need to define a method of 
 
 The vocabulary we use for KlangScribe is a sparse note-event vocabulary inspired by [MT3: Multi-Task Multitrack Music Transcription](https://arxiv.org/pdf/2111.03017):
 
-#### (1) **Start/End/Pad Tokens** (3 total)
+#### (1) **Special Tokens** (4 total)
 * **[BOS]** - Indicates beginning of a sequence/window
 * **[EOS]** - Indicates end of a sequence/window
 * **[PAD]** - Pad tokens added after **[EOS]** to fill context
@@ -90,3 +90,26 @@ The vocabulary we use for KlangScribe is a sparse note-event vocabulary inspired
     * `[tie(0) tie(1) tie(3) time(25) offset(0) offset(1) offset(3)]`
 * Strummed GY onset (no sustain)
     * `[time(0) onset(0) onset(1) offset(0) offset(1)]`
+
+<!-- REMOVE THE FOLLOWING SECTION:
+we don't need to use the SEP token since TIE tokens handle cross-window continuity anyways -->
+
+<!-- **Use of [SEP] for Window Processing:**
+
+During training, our implementation processes 50%-overlapped windows of note events. For example, this means that for a given 2.0s note-event window provided as input into the decoder, all tokens taking place up to 1.0s are followed by a **[SEP]** token:
+
+```bash
+(note-event token sequence between t=0s and t=1s)  [SEP]  (not-event token sequence between t=1s and t=2s)
+```
+
+During inference, this is useful because the model learns that all input preceding **[SEP]** represents context for autoregressively generating note-events in the second half of the current window. So the decoder for a given input window would be:
+
+```bash
+[BOS]  (tokens btwn t=[0,1]s)  [SEP]
+```
+
+And the very first window of a song, which has no history, would be:
+
+```bash
+[BOS]  [SEP]
+``` -->

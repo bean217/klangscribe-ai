@@ -114,6 +114,27 @@ class ChartVocab:
             self.__initialize_vocab()
         return self.vocab_size
     
+    @property
+    def BOS(self) -> int:
+        """
+        Returns the integer ID corresponding to the Beginning of Sequence (BOS) token in the vocabulary.
+        """
+        return self._token_map["BOS"]
+    
+    @property
+    def EOS(self) -> int:
+        """
+        Returns the integer ID corresponding to the End of Sequence (EOS) token in the vocabulary.
+        """
+        return self._token_map["EOS"]
+    
+    @property
+    def PAD(self) -> int:
+        """
+        Returns the integer ID corresponding to the Padding (PAD) token in the vocabulary.
+        """
+        return self._token_map["PAD"]
+    
     def token_to_id(self, token: str) -> int:
         """
         Converts a given token to its corresponding integer ID based on the vocabulary mapping.

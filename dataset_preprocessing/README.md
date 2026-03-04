@@ -8,37 +8,27 @@ The following canonical dataset structure is expected
 
 ```
 canonical/
-├── train/
-│   ├── charts/
-│   │   ├── sid_*.npz
-│   ├── full_songs/
-│   │   ├── sid_*.opus
-│   ├── instr_songs/
-│   │   ├── sid_*.opus
-│   └── song_metadata.parquet
-├── val/
-│   ├── charts/
-│   │   ├── sid_*.npz
-│   ├── full_songs/
-│   │   ├── sid_*.opus
-│   ├── instr_songs/
-│   │   ├── sid_*.opus
-│   └── song_metadata.parquet
-└── test/
-    ├── charts/
-    │   ├── sid_*.npz
-    ├── full_songs/
-    │   ├── sid_*.opus
-    ├── instr_songs/
-    │   ├── sid_*.opus
-    └── song_metadata.parquet
-
+├── song_metadata.parquet
+├── raw/
+│   ├── audio/
+│   │   └── sid_*.opus
+│   └── charts/
+│       └── sid_*.chart
+└── processed/
+    ├── instr_audio/
+    │   └── sid_*.opus
+    ├── vocal_audio/
+    │   └── sid_*.opus
+    └── charts/
+        └── sid_*.npz
 ```
 
 **Data Splits:**
 * `train` (~80%)
 * `val` (~10%)
 * `test` (~10%)
+
+NOTE: data splits may not adhere to these exact percentages due to issues with managing data leakage
 
 **Data Descriptions:**
 * `charts`

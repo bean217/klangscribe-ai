@@ -7,6 +7,7 @@
 
 from dataclasses import dataclass, field
 import omegaconf as oc
+from typing import Optional
 from hydra.core.config_store import ConfigStore
 
 
@@ -26,7 +27,8 @@ class PreprocessorConfig:
     Defines the configuration parameters for the dataset preprocessor, including input/output directories and data model configuration.
     """
     input_dir: str = oc.MISSING
-    output_dir: str = oc.MISSING
+    output_dir: str = oc.MISSING        
+    num_workers: Optional[int] = None   # number of worker threads to use for parallel preprocessing; -1 to use all available CPU cores
     data_model_config: DataModelConfig = field(default_factory=DataModelConfig)
 
 

@@ -21,12 +21,13 @@ class ChartWriter:
 ######################
 
 
-def write_chart(vectorized_data, output_path: str):
-    """
-    Constructs a .chart file from vectorized chart data and writes it to the specified output path.
+    def write_chart(vectorized_data, output_path: str):
+        """
+        Constructs a .chart file from vectorized chart data and writes it to the specified output path.
 
-    Args:
-        - vectorized_data: The vectorized representation of the chart data to be written.
-        - output_path (str): The file path where the constructed .chart file should be saved.
-    """
+        Args:
+            - vectorized_data: The vectorized representation of the chart data to be written.
+            - output_path (str): The file path where the constructed .chart file should be saved.
+        """
+        raise NotImplementedError("Chart writing logic not yet implemented.")
     

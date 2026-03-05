@@ -5,9 +5,8 @@
 # date: 2026-02-28
 #
 
-import yaml
 from dataclasses import dataclass, field
-from omegaconf import MISSING
+import omegaconf as oc
 from hydra.core.config_store import ConfigStore
 
 
@@ -16,16 +15,18 @@ class DataModelConfig:
     """
     Defines the configuration parameters for the data model used in preprocessing the dataset for KlangScribe AI.
     """
-    pass
-
+    window_size: int = 100              # number of fixed-grid ticks per chart window (e.g., 100 ticks = 2 seconds at 50 ticks per second) 
+    time_step_size: float = 0.02        # 20ms time steps; 50 fixed-grid ticks per second
+    resolution: int = 480               # standard Clone Hero resolution of 480 ticks per quarter note (PPQN)
+    target_sample_rate: int = 24000     # target sample rate for audio processing (e.g., resampling, spectrogram generation, etc.)
 
 @dataclass
 class PreprocessorConfig:
     """
     Defines the configuration parameters for the dataset preprocessor, including input/output directories and data model configuration.
     """
-    input_dir: str = MISSING
-    output_dir: str = MISSING
+    input_dir: str = oc.MISSING
+    output_dir: str = oc.MISSING
     data_model_config: DataModelConfig = field(default_factory=DataModelConfig)
 
 

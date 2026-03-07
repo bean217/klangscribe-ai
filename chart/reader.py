@@ -292,6 +292,13 @@ def save_vectorized_chart(resolution: int, offset: float, tempo_changes: np.ndar
 def read_vectorized_chart(vectorized_chart_path: str) -> tuple[int, float, np.ndarray, np.ndarray]:
     """
     Reads vectorized chart data from the specified .npz file path and returns it as a tuple containing resolution, offset, tempo changes, and note events.
+    
+    Returns:
+        - resolution (int): The resolution of the chart, which indicates the number of ticks per quarter note and is used to interpret the timing of events in the chart.
+        - offset (float): The offset time in seconds, which can be used to align the timing of events in the chart with audio or other reference points.
+        - tempo_changes (np.ndarray): A numpy array containing the tempo change events in the chart, where each row corresponds to a tempo change event and contains 
+            the tick at which the tempo change occurs and the BPM value for that tempo change (multiplied by 1000).
+        - note_events (np.ndarray): A numpy array containing the note events in the chart, where each row corresponds to a note event and contains information about the timing and state of the note.
     """
     # ensure that the input file is a .npz file containing vectorized chart data
     assert str(vectorized_chart_path).endswith('.npz'), "Input file must be a .npz file containing vectorized chart data."

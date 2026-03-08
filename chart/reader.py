@@ -314,8 +314,8 @@ def read_vectorized_chart(vectorized_chart_path: str) -> tuple[int, float, np.nd
 if __name__ == "__main__":
     # example usage
     from pathlib import Path
-    chart_path = Path(__file__).parent / "data" / "sample_input.chart"
-    output_path = Path(__file__).parent / "data" / "sample_output.npz"
+    chart_path = Path(__file__).parent / "data" / "reddi_theshow.chart"
+    output_path = Path(__file__).parent / "data" / "reddi_theshow.npz"
     resolution, offset, tempo_changes, note_events = parse_chart(chart_path)
 
     print("Note events:", note_events.shape)

@@ -81,6 +81,54 @@ def _tick_to_sec(tick: int, bpm_ticks: np.ndarray, resolution: int) -> float:
     return base_time + delta_time
 
 
+def _merge_similar_events(unmerged_events_arr):
+    """
+    Given an array of sorted, unmerged, absolute-time note events, combines note events of the same
+    event type, note type, and occurrence time into a single event.
+
+    Input Shape: (n, 8)
+    Output Shape: (m, 8) where m <= n, and n-m is the number of merges performed
+    """
+    if len(unmerged_events_arr) <= 1:
+        # no need to try merging
+        return unmerged_events_arr
+    
+    def merge_events(note_events: list, similar_events: list):
+        if len(similar_events) == 1:
+                note_events.append(similar_events[0])
+        else:
+            time_sec = similar_events[0][0:1]
+            lanes = np.max([evt[1:7] for evt in similar_events], axis=0)
+            note_type = similar_events[0][7:8]
+            evt_type = similar_events[0][8:9]
+            note_events.append(np.hstack((time_sec, lanes, note_type, evt_type), dtype=float))
+
+    # merge events with the same event type and note type that occur at the same time
+    note_events = []
+    similar_events = unmerged_events_arr[:1]
+    for note_evt in unmerged_events_arr[1:]:
+        last_time = similar_events[-1][0]
+        last_note_type = similar_events[-1][7]
+        last_evt_type = similar_events[-1][8]
+        cur_time = note_evt[0]
+        cur_note_type = note_evt[7]
+        cur_evt_type = note_evt[8]
+        # if the current event happens at the same time as the last and has the same type, merge
+        # "at the same time" = "within one microsecond"
+        if np.abs(last_time - cur_time) < 1e-6 and last_note_type == cur_note_type and last_evt_type == cur_evt_type:
+            similar_events.append(note_evt)
+        else:
+            # the current event is different from the previous so merge the events in merge_events
+            merge_events(note_events, similar_events)
+            # then add the current event to it        
+            similar_events = [note_evt]
+    # merge any remaining events
+    if len(similar_events) > 0:
+        merge_events(note_events, similar_events)
+    # return the accumulated note events
+    return note_events
+
+
 ######################
 #                    #
 #   Static Methods   #
@@ -123,7 +171,7 @@ def convert_to_abstime(note_data: np.ndarray, tempo_changes, resolution: int, of
 
         note_press_durations = []
         for i in range(note_press_data.shape[0]):
-            # calculate duration o fsustains based on sustain length data and BPM events
+            # calculate duration of sustains based on sustain length data and BPM events
             if note_press_data[i] == 1 and note_sustain_data[i] > 0:
                 end_tick = note_tick + note_sustain_data[i]
                 end_sec = _tick_to_sec(end_tick, processed_tempo_changes, resolution)
@@ -156,6 +204,11 @@ def validate_chart(abstime_chart_data: np.ndarray, min_delta_time: int) -> bool:
     Returns:
         - bool: True if the chart data is valid according to the specified criteria, False otherwise
     """
+    
+    delta_times = np.diff(abstime_chart_data[:,0])
+    for dt in delta_times:
+        print("Delta Time:", dt)
+
     raise NotImplementedError("Chart validation logic not yet implemented.")
 
 @staticmethod
@@ -170,14 +223,59 @@ def convert_to_fixed_grid(abstime_chart_data: np.ndarray, grid_size: int):
     raise NotImplementedError("Fixed-grid conversion logic not yet implemented.")
 
 @staticmethod
-def convert_to_event_based(fixed_grid_chart_data: np.ndarray):
+def convert_to_event_based(abstime_chart_data: np.ndarray):
     """
-    Converts fixed-grid chart data into an event-based format, where each event corresponds to a change in the state of the chart (e.g., note on, note off, etc.).
+    Converts absolute-time chart data into an event-based format, where each event corresponds to a change in the state of the chart (e.g., note on, note off, etc.).
     
     Args:
-        - fixed_grid_chart_data (np.ndarray): The fixed-grid representation of the chart data to be converted into event-based format.
+        - abstime_chart_data (np.ndarray): The absolute-time representation of the chart data to be converted into event-based format.
+    
+    Returns:
+        - numpy matrix with:
+            - cols[0] = event time (float; seconds)
+            - cols[1:7] = affected lanes (binary)
+            - cols[7] = note type (0=regular, 1=HOPO, 2=Tap; ignored if event type is 0)
+            - cols[8] = note event type (binary; 0=offset, 1=onset)
     """
-    raise NotImplementedError("Event-based conversion logic not yet implemented.")
+    # use a priority queue (heapq) to keep events sorted
+    note_events = []
+    for chart_data in abstime_chart_data:
+        # (1) extract the onset event info
+        time_sec = chart_data[0:1]
+        onset_lanes = chart_data[1:7]
+        onset_type = chart_data[13:14]
+        note_evt_type = 1
+        # stack into one row vector
+        onset_evt_arr = np.hstack((time_sec, onset_lanes, onset_type, note_evt_type), dtype=float)
+        note_events.append(onset_evt_arr)
+
+        # (2) extract the offset event info
+        if any(sustain_lanes := chart_data[7:13]):
+            unique_sustain_lengths = np.unique(sustain_lanes)
+            # construct offset event for the end of each unique sustain length
+            for sus_len in unique_sustain_lengths:
+                if not sus_len:
+                    # skip zero-length sustains
+                    continue
+                # calculate offset event time marker
+                time_sec = chart_data[0:1] + sus_len
+                # determine affected lanes
+                lane_inds = np.where(sustain_lanes == sus_len)[0]
+                offset_lanes = np.zeros_like(sustain_lanes)
+                offset_lanes[lane_inds] = 1
+                note_evt_type = offset_type = 0
+                # stack into one row vector
+                offset_evt_arr = np.hstack((time_sec, offset_lanes, offset_type, note_evt_type), dtype=float)
+                note_events.append(offset_evt_arr)
+
+    # sort events first by the time they occur, then by event type
+    note_events.sort(key=lambda note_evt: (note_evt[0], -note_evt[8]))
+    # merge note events which occur at the same time and are of the same type
+    note_events = _merge_similar_events(note_events)
+    # stack vertically and return
+    event_chart_data = np.vstack(note_events)
+    return event_chart_data
+
 
 @staticmethod
 def chunk_chart_data(event_based_chart_data: np.ndarray, context_length: int):
@@ -195,7 +293,7 @@ if __name__ == "__main__":
     # Example usage of the chart processing functionality
     from pathlib import Path
     import chart.reader as chart_reader
-    sample_chart_path = Path(__file__).parent / "data" / "sample_output.npz"
+    sample_chart_path = Path(__file__).parent / "data" / "reddi_theshow.npz"
     resolution, offset, tempo_changes, note_data = chart_reader.read_vectorized_chart(sample_chart_path)
     print("Resolution:", resolution)
     print("Offset:", offset)
@@ -204,9 +302,20 @@ if __name__ == "__main__":
 
     print("\nConverting to absolute time representation...")
     abs_time_arr = convert_to_abstime(note_data, tempo_changes, resolution, offset)
-    for row in abs_time_arr:
+    # for row in abs_time_arr:
+    #     time_sec = float(row[0])
+    #     press = [int(x) for x in row[1:7]]
+    #     sustain = [float(x) for x in row[7:13]]
+    #     note_type = int(row[13])
+    #     print(f"Time: {time_sec:.3f} sec, Press: {press}, Sustain: {sustain}, Note Type: {note_type}")
+
+    # validate_chart(abs_time_arr, 0.02)
+
+    print("\nConverting to abstime event representation...")
+    evt_chart_data = convert_to_event_based(abs_time_arr)
+    for row in evt_chart_data:
         time_sec = float(row[0])
-        press = [int(x) for x in row[1:7]]
-        sustain = [int(x) for x in row[7:13]]
-        note_type = int(row[13])
-        print(f"Time: {time_sec:.3f} sec, Press: {press}, Sustain: {sustain}, Note Type: {note_type}")
+        lanes = [int(x) for x in row[1:7]]
+        note_type = int(row[7])
+        evt_type = "Onset" if row[8] else "Offset"
+        print(f"Time: {time_sec:.3f} sec, Lanes: {lanes}, Note Type: {note_type}, Event Type: {evt_type}")

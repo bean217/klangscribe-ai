@@ -278,22 +278,37 @@ def convert_to_event_based(abstime_chart_data: np.ndarray):
 
 
 @staticmethod
-def chunk_chart_data(event_based_chart_data: np.ndarray, context_length: int):
+def chunk_chart_data(event_based_chart_data: np.ndarray, context_length: float):
     """
     Chunks event-based chart data into overlapping windows based on the specified context length, padding as necessary.
     
     Args:
         - event_based_chart_data (np.ndarray): The event-based representation of the chart data to be chunked into overlapping windows.
-        - context_length (int): The length of the context window to be used for chunking the chart data, which determines the shape of the resulting chunked data (num_chunks, context_length, num_features).
+        - context_length (float): The temporal length of the context window to be used for chunking the chart data, which determines the shape of the resulting chunked data (num_chunks, context_length, num_features).
     """
-    raise NotImplementedError("Chart chunking logic not yet implemented.")
+    if event_based_chart_data is None or event_based_chart_data.shape[0] == 0:
+        return []   # song has no events
+    event_based_chart_data = event_based_chart_data.copy()
+    cur_win_time = 0.0
+    windows = []
+    while cur_win_time <= event_based_chart_data[-1][0]:
+        mask = (cur_win_time <= event_based_chart_data[:,0]) & (event_based_chart_data[:,0] < cur_win_time + context_length)
+        window_events = event_based_chart_data[mask]
+        if window_events.shape[0] == 0:
+            windows.append([])
+        else:
+            # event times are relative to the start of the window
+            window_events[:,0] -= cur_win_time
+            windows.append(window_events)
+        cur_win_time += context_length
+    return windows
 
 
 if __name__ == "__main__":
     # Example usage of the chart processing functionality
     from pathlib import Path
     import chart.reader as chart_reader
-    sample_chart_path = Path(__file__).parent / "data" / "reddi_theshow.npz"
+    sample_chart_path = Path(__file__).parent / "data" / "sample_output.npz"
     resolution, offset, tempo_changes, note_data = chart_reader.read_vectorized_chart(sample_chart_path)
     print("Resolution:", resolution)
     print("Offset:", offset)
@@ -319,3 +334,17 @@ if __name__ == "__main__":
         note_type = int(row[7])
         evt_type = "Onset" if row[8] else "Offset"
         print(f"Time: {time_sec:.3f} sec, Lanes: {lanes}, Note Type: {note_type}, Event Type: {evt_type}")
+    
+    print("\nChunking chart events into windows...")
+    chunked_chart_data = chunk_chart_data(evt_chart_data, 2.0)
+    for i, window in enumerate(chunked_chart_data):
+        print("Window", i)
+        if len(window) == 0:
+            print("\tEmpty")
+            continue
+        for row in window:
+            time_sec = float(row[0])
+            lanes = [int(x) for x in row[1:7]]
+            note_type = int(row[7])
+            evt_type = "Onset" if row[8] else "Offset"
+            print(f"\tTime: {time_sec:.3f} sec, Lanes: {lanes}, Note Type: {note_type}, Event Type: {evt_type}")

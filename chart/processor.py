@@ -129,13 +129,13 @@ def _merge_similar_events(unmerged_events_arr):
     return note_events
 
 
-######################
-#                    #
-#   Static Methods   #
-#                    #
-######################
+########################
+#                      #
+#   Public Functions   #
+#                      #
+########################
 
-@staticmethod
+
 def convert_to_abstime(note_data: np.ndarray, tempo_changes, resolution: int, offset: float = 0.0):
     """
     Converts vectorized chart data into its absolute-time representation.
@@ -193,7 +193,7 @@ def convert_to_abstime(note_data: np.ndarray, tempo_changes, resolution: int, of
     return note_times    
 
 
-@staticmethod
+
 def validate_chart(abstime_chart_data: np.ndarray, min_delta_time: int) -> bool:
     """
     Validates the absolute-time chart data against specified criteria, such as minimum delta time between events.
@@ -211,18 +211,24 @@ def validate_chart(abstime_chart_data: np.ndarray, min_delta_time: int) -> bool:
 
     raise NotImplementedError("Chart validation logic not yet implemented.")
 
-@staticmethod
-def convert_to_fixed_grid(abstime_chart_data: np.ndarray, grid_size: int):
+
+def convert_to_fixed_grid(abstime_event_chart_data: np.ndarray, grid_size: float):
     """
     Converts absolute-time chart data into a fixed-grid representation based on the specified grid size.
     
     Args:
         - abstime_chart_data (np.ndarray): The absolute-time representation of the chart data to be converted.
-        - grid_size (int): The size of the grid to be used for converting the chart data into a fixed-grid representation.
+        - grid_size (float): The time width of the grid to be used for converting the chart data into a fixed-grid representation.
     """
-    raise NotImplementedError("Fixed-grid conversion logic not yet implemented.")
+    # calculate quantized tick times
+    quantized_times = np.round(abstime_event_chart_data[:,0] / grid_size)
+    # transplant these into a copy of the original data
+    quantized_chart_data = abstime_event_chart_data.copy()
+    quantized_chart_data[:,0] = quantized_times
+    # return int-casted quantized data
+    return quantized_chart_data.astype(int)
 
-@staticmethod
+
 def convert_to_event_based(abstime_chart_data: np.ndarray):
     """
     Converts absolute-time chart data into an event-based format, where each event corresponds to a change in the state of the chart (e.g., note on, note off, etc.).
@@ -235,7 +241,7 @@ def convert_to_event_based(abstime_chart_data: np.ndarray):
             - cols[0] = event time (float; seconds)
             - cols[1:7] = affected lanes (binary)
             - cols[7] = note type (0=regular, 1=HOPO, 2=Tap; ignored if event type is 0)
-            - cols[8] = note event type (binary; 0=offset, 1=onset)
+            - cols[8] = note event type (binary; 0=offset, 1=o########nset)
     """
     # use a priority queue (heapq) to keep events sorted
     note_events = []
@@ -277,30 +283,29 @@ def convert_to_event_based(abstime_chart_data: np.ndarray):
     return event_chart_data
 
 
-@staticmethod
-def chunk_chart_data(event_based_chart_data: np.ndarray, context_length: float):
+def chunk_chart_data(event_based_chart_data: np.ndarray, context_length: int):
     """
     Chunks event-based chart data into overlapping windows based on the specified context length, padding as necessary.
     
     Args:
         - event_based_chart_data (np.ndarray): The event-based representation of the chart data to be chunked into overlapping windows.
-        - context_length (float): The temporal length of the context window to be used for chunking the chart data, which determines the shape of the resulting chunked data (num_chunks, context_length, num_features).
+        - context_length (int): The tick length of the context window to be used for chunking the chart data, which determines the shape of the resulting chunked data (num_chunks, context_length, num_features).
     """
     if event_based_chart_data is None or event_based_chart_data.shape[0] == 0:
         return []   # song has no events
     event_based_chart_data = event_based_chart_data.copy()
-    cur_win_time = 0.0
+    cur_win_tick = 0
     windows = []
-    while cur_win_time <= event_based_chart_data[-1][0]:
-        mask = (cur_win_time <= event_based_chart_data[:,0]) & (event_based_chart_data[:,0] < cur_win_time + context_length)
+    while cur_win_tick <= event_based_chart_data[-1][0]:
+        mask = (cur_win_tick <= event_based_chart_data[:,0]) & (event_based_chart_data[:,0] < cur_win_tick + context_length)
         window_events = event_based_chart_data[mask]
         if window_events.shape[0] == 0:
             windows.append([])
         else:
             # event times are relative to the start of the window
-            window_events[:,0] -= cur_win_time
+            window_events[:,0] -= cur_win_tick
             windows.append(window_events)
-        cur_win_time += context_length
+        cur_win_tick += context_length
     return windows
 
 
@@ -308,7 +313,7 @@ if __name__ == "__main__":
     # Example usage of the chart processing functionality
     from pathlib import Path
     import chart.reader as chart_reader
-    sample_chart_path = Path(__file__).parent / "data" / "sample_output.npz"
+    sample_chart_path = Path(__file__).parent / "data" / "reddi_theshow.npz"
     resolution, offset, tempo_changes, note_data = chart_reader.read_vectorized_chart(sample_chart_path)
     print("Resolution:", resolution)
     print("Offset:", offset)
@@ -335,16 +340,25 @@ if __name__ == "__main__":
         evt_type = "Onset" if row[8] else "Offset"
         print(f"Time: {time_sec:.3f} sec, Lanes: {lanes}, Note Type: {note_type}, Event Type: {evt_type}")
     
-    print("\nChunking chart events into windows...")
-    chunked_chart_data = chunk_chart_data(evt_chart_data, 2.0)
+    print("\nQuantizing abstime event chart data using grid_size = 0.02 (20ms)")
+    quantized_evt_chart_data = convert_to_fixed_grid(evt_chart_data, grid_size=0.02)
+    for row in quantized_evt_chart_data:
+        time_sec = int(row[0])
+        lanes = [int(x) for x in row[1:7]]
+        note_type = int(row[7])
+        evt_type = "Onset" if row[8] else "Offset"
+        print(f"Tick: {time_sec}, Lanes: {lanes}, Note Type: {note_type}, Event Type: {evt_type}")
+
+    print("\nChunking chart events into windows with context_len=100...")
+    chunked_chart_data = chunk_chart_data(quantized_evt_chart_data, 100)
     for i, window in enumerate(chunked_chart_data):
         print("Window", i)
         if len(window) == 0:
             print("\tEmpty")
             continue
         for row in window:
-            time_sec = float(row[0])
+            time_sec = int(row[0])
             lanes = [int(x) for x in row[1:7]]
             note_type = int(row[7])
             evt_type = "Onset" if row[8] else "Offset"
-            print(f"\tTime: {time_sec:.3f} sec, Lanes: {lanes}, Note Type: {note_type}, Event Type: {evt_type}")
+            print(f"\tTick: {time_sec}, Lanes: {lanes}, Note Type: {note_type}, Event Type: {evt_type}")

@@ -283,19 +283,23 @@ def convert_to_event_based(abstime_chart_data: np.ndarray):
     return event_chart_data
 
 
-def chunk_chart_data(event_based_chart_data: np.ndarray, context_length: int):
+def chunk_chart_data(event_based_chart_data: np.ndarray, context_length: int, overlap_length: int = 0):
     """
     Chunks event-based chart data into overlapping windows based on the specified context length, padding as necessary.
     
     Args:
         - event_based_chart_data (np.ndarray): The event-based representation of the chart data to be chunked into overlapping windows.
         - context_length (int): The tick length of the context window to be used for chunking the chart data, which determines the shape of the resulting chunked data (num_chunks, context_length, num_features).
+        - overlap_length (int): The number of ticks by which consecutive windows should overlap. Default is 0 (no overlap).
     """
+    if overlap_length < 0 or overlap_length >= context_length:
+        raise ValueError(f"Overlap length must be non-negative and less than context length. Received overlap_length: {overlap_length}, context_length: {context_length}")
     if event_based_chart_data is None or event_based_chart_data.shape[0] == 0:
         return []   # song has no events
     event_based_chart_data = event_based_chart_data.copy()
     cur_win_tick = 0
     windows = []
+    # construct windows by sliding a window of size context_length across the chart data with a step size of (context_length - overlap_length)
     while cur_win_tick <= event_based_chart_data[-1][0]:
         mask = (cur_win_tick <= event_based_chart_data[:,0]) & (event_based_chart_data[:,0] < cur_win_tick + context_length)
         window_events = event_based_chart_data[mask]
@@ -305,7 +309,10 @@ def chunk_chart_data(event_based_chart_data: np.ndarray, context_length: int):
             # event times are relative to the start of the window
             window_events[:,0] -= cur_win_tick
             windows.append(window_events)
-        cur_win_tick += context_length
+        cur_win_tick += context_length - overlap_length
+    # remove the last window if it contains no new events (i.e., if the last window has ticks that are all less than the overlap length)
+    if overlap_length > 0 and len(windows) >= 2 and windows[-1][:,0].max() < overlap_length:
+        windows.pop()
     return windows
 
 
@@ -350,7 +357,7 @@ if __name__ == "__main__":
         print(f"Tick: {time_sec}, Lanes: {lanes}, Note Type: {note_type}, Event Type: {evt_type}")
 
     print("\nChunking chart events into windows with context_len=100...")
-    chunked_chart_data = chunk_chart_data(quantized_evt_chart_data, 100)
+    chunked_chart_data = chunk_chart_data(quantized_evt_chart_data, context_length=100, overlap_length=50)
     for i, window in enumerate(chunked_chart_data):
         print("Window", i)
         if len(window) == 0:

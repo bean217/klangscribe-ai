@@ -368,16 +368,16 @@ if __name__ == "__main__":
         evt_type = "Onset" if row[8] else "Offset"
         print(f"Tick: {time_sec}, Lanes: {lanes}, Note Type: {note_type}, Event Type: {evt_type}")
 
-    # print("\nChunking chart events into windows with context_len=100...")
-    # chunked_chart_data = chunk_chart_data(quantized_evt_chart_data, context_length=100, overlap_length=50)
-    # for i, window in enumerate(chunked_chart_data):
-    #     print("Window", i)
-    #     if len(window) == 0:
-    #         print("\tEmpty")
-    #         continue
-    #     for row in window:
-    #         time_sec = int(row[0])
-    #         lanes = [int(x) for x in row[1:7]]
-    #         note_type = int(row[7])
-    #         evt_type = "Onset" if row[8] else "Offset"
-    #         print(f"\tTick: {time_sec}, Lanes: {lanes}, Note Type: {note_type}, Event Type: {evt_type}")
+    print("\nChunking chart events into windows with context_len=100...")
+    chunked_chart_data = chunk_chart_data(quantized_evt_chart_data, context_length=100, overlap_length=50)
+    for i, window in enumerate(chunked_chart_data):
+        print("Window", i)
+        if len(window) == 0:
+            print("\tEmpty")
+            continue
+        for row in window:
+            time_sec = int(row[0])
+            lanes = [int(x) for x in row[1:7]]
+            note_type = int(row[7])
+            evt_type = "Onset" if row[8] else "Offset"
+            print(f"\tTick: {time_sec}, Lanes: {lanes}, Note Type: {note_type}, Event Type: {evt_type}")

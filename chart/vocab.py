@@ -18,9 +18,9 @@ import numpy as np
 # Special Case Tokens -- fixed tokens representing specific events/conditions
 
 SPECIAL_TOKENS = (
+    "PAD",          # Padding token, used to fill in empty time steps in a chart window (training only)
     "BOS",          # Beginning of Sequence token, used to indicate the start of a chart window
     "EOS",          # End of Sequence token, used to indicate the end of a chart window
-    "PAD",          # Padding token, used to fill in empty time steps in a chart window (training only)
 )
 
 # Lane On/Off Tokens
@@ -83,23 +83,23 @@ class ChartVocab:
 
     def __init__(
         self, 
-        grid_size: int = 100
+        window_size: int = 100
     ):
-        assert grid_size > 0, "Grid size must be a positive integer."
-        self.grid_size = grid_size
+        assert window_size > 0, "Window size must be a positive integer."
+        self.window_size = window_size
         self.vocab_tokens = None
         self.vocab_size = 0
 
-        # create the sparse absolute-time note-event vocabulary based on the specified grid size
+        # create the sparse absolute-time note-event vocabulary based on the specified window size
         self.__initialize_vocab()
     
     def __initialize_vocab(self):
         """
-        Initializes the vocabulary tokens based on the specified grid size.
+        Initializes the vocabulary tokens based on the specified window size.
         """
         # define the tokens in the vocabulary
         self.vocab_tokens = list(SPECIAL_TOKENS) + list(LANE_ON_TOKENS) + list(LANE_OFF_TOKENS) + list(NOTE_MOD_TOKENS) + list(TIE_TOKENS)
-        self.vocab_tokens += [TIME_SHIFT_TOKEN(i) for i in range(0, self.grid_size)]
+        self.vocab_tokens += [TIME_SHIFT_TOKEN(i) for i in range(0, self.window_size)]
         # create a mapping from tokens to their corresponding integer IDs
         self._token_map = {token: idx for idx, token in enumerate(self.vocab_tokens)}
         # store the size of the vocabulary for easy access
@@ -171,6 +171,6 @@ if __name__ == "__main__":
 
     grid_size = math.ceil(window_size_sec / timestep_len_sec)
 
-    vocab = ChartVocab(grid_size=grid_size)
+    vocab = ChartVocab(window_size=grid_size)
     print(f"Vocabulary size: {vocab.size}")
     print(f"Token to ID mapping: {vocab._token_map}")

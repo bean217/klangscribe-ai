@@ -18,6 +18,7 @@ class DataModelConfig:
     Defines the configuration parameters for the data model used in preprocessing the dataset for KlangScribe AI.
     """
     window_size: int = 100              # number of fixed-grid ticks per chart window (e.g., 100 ticks = 2 seconds at 50 ticks per second) 
+    overlap_size: int = 50              # number of fixed-grid ticks to overlap between consecutive windows (e.g., 50 ticks = 1 second at 50 ticks per second)
     time_step_size: float = 0.02        # 20ms time steps; 50 fixed-grid ticks per second
     resolution: int = 480               # standard Clone Hero resolution of 480 ticks per quarter note (PPQN)
     target_sample_rate: int = 24000     # target sample rate for audio processing (e.g., resampling, spectrogram generation, etc.)
@@ -28,7 +29,11 @@ class DataModelConfig:
         calulated_bpm = (self.resolution_multiplier * 60) / (self.time_step_size * self.resolution)
         if round(calulated_bpm, 3) != calulated_bpm:
             raise ValueError(f"Invalid configuration: resolution and time_step_size are not compatible. Calculated BPM: {calulated_bpm}. Ensure that the time_step_size corresponds to a BPM value with up to 3 decimal places when using the specified resolution and resolution_multiplier.")
-
+        # Validate that window_size is greater than overlap_size and overlap_size is non-negative
+        if self.window_size <= self.overlap_size:
+            raise ValueError(f"Invalid configuration: window_size must be greater than overlap_size. Got window_size={self.window_size} and overlap_size={self.overlap_size}.")
+        if self.overlap_size < 0:
+            raise ValueError(f"Invalid configuration: overlap_size must be non-negative. Got overlap_size={self.overlap_size}.")
 
 @dataclass
 class PreprocessorConfig:

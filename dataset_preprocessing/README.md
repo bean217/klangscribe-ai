@@ -1,4 +1,4 @@
-# KlangScribe AI Dataset Preprocessing
+# KlangScribe Dataset Preprocessing
 
 This module contains functionality for constructing a KlangScribe-specific dataset from a canonical form.
 
@@ -52,3 +52,4 @@ NOTE: data splits may not adhere to these exact percentages due to issues with m
     * Contains `.opus` files which hold instrumental song audio (excluding vocals)
 
 
+## Preprocessing the KlangScribe Official Dataset

@@ -60,7 +60,7 @@ def write_chart_from_vec(output_path: str, quantized_note_data: np.ndarray, grid
     """
     note_section = Template(SONG_SECTION_TEMPLATE).substitute(offset=0.0, resolution=target_resolution)
     print(note_section)
-
+    
 
 def write_chart_from_tokens(output_path: str, vocab: ChartVocab, token_sequence: list[int], bpm: float, resolution: int):
     """

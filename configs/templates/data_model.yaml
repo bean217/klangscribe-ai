@@ -11,6 +11,10 @@
 # e.g., 100 ticks = 2 seconds at 50 ticks/sec (time_step_size=0.02)
 window_size: 100
 
+# Number of fixed-grid ticks to overlap between consecutive windows.
+# e.g., 50 ticks = 1 second at 50 ticks/sec (time_step_size=0.02)
+overlap_size: 50
+
 # Duration of each fixed-grid tick in seconds.
 # Must be compatible with `resolution` and `resolution_multiplier` such that
 # the resulting BPM has at most 3 decimal places:

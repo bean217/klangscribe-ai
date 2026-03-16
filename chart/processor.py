@@ -8,6 +8,8 @@
 
 import numpy as np
 
+from chart.vocab import ChartVocab
+
 
 def _process_tempo_changes(tempo_changes: np.ndarray, resolution: int):
     """
@@ -241,7 +243,7 @@ def convert_to_event_based(abstime_chart_data: np.ndarray):
             - cols[0] = event time (float; seconds)
             - cols[1:7] = affected lanes (binary)
             - cols[7] = note type (0=regular, 1=HOPO, 2=Tap; ignored if event type is 0)
-            - cols[8] = note event type (binary; 0=offset, 1=o########nset)
+            - cols[8] = note event type (binary; 0=offset, 1=onset)
     """
     # use a priority queue (heapq) to keep events sorted
     note_events = []
@@ -314,6 +316,16 @@ def chunk_chart_data(event_based_chart_data: np.ndarray, context_length: int, ov
     if overlap_length > 0 and len(windows) >= 2 and windows[-1][:,0].max() < overlap_length:
         windows.pop()
     return windows
+
+
+def tokenize_chart_chunks(chunked_chart_event_data: list, vocab: ChartVocab):
+    """
+    Tokenizes chunked chart event data into a sequence of token IDs based on the provided vocabulary mapping.
+    Args:
+        - chunked_chart_event_data (list): A list of chunked chart event data, where each element is a numpy array of shape (num_events_in_chunk, num_features) representing the events in that chunk.
+        - vocab (ChartVocab): The vocabulary mapping to be used for tokenizing the chart event data, which defines how different types of events and their attributes are mapped to token IDs.
+    """
+    raise NotImplementedError("Chart tokenization logic not yet implemented.")
 
 
 if __name__ == "__main__":

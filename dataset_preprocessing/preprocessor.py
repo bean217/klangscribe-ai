@@ -13,6 +13,7 @@ from omegaconf import OmegaConf
 from dataclasses import dataclass
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
+import chart.reader as chart_reader
 import chart.processor as chart_processor
 from dataset_preprocessing.config import PreprocessorConfig, DataModelConfig
 from utils.logging import format_exception
@@ -60,28 +61,30 @@ def process_song(cfg: PreprocessorConfig, split_path: str, song_id: str):
 
         # (1) convert the .npz file for this song to its vectorized chart data
         chart_path = f"{split_path}/charts/sid_{song_id}.npz"
-        chart_data = chart_processor.process_chart(chart_path)
+        chart_resolution, chart_offset, chart_tempo_changes, chart_note_data = chart_reader.read_vectorized_chart(chart_path)
 
         # (2) convert vectorized chart into its absolute-time representation
-        abstime_chart_data = chart_processor.convert_to_abstime(chart_data)
+        abstime_chart_data = chart_processor.convert_to_abstime(chart_note_data, chart_tempo_changes, chart_resolution, chart_offset)
 
         # (3) validate chart by checking minimum delta time between notes (if any notes are closer than min_delta, log a warning and skip this song)
-        min_delta = dm_cfg.min_delta_time
+        min_delta = dm_cfg.time_step_size
         if not chart_processor.validate_chart(abstime_chart_data, min_delta):
             log.warning(f"Skipping song {song_id} due to minimum delta time violation.")
             return SongPreprocessResult(song_id=song_id, success=SongPreprocessStatus.DISCARD, error_message="Minimum delta time violation")
     
-        # (4) convert the absolute-time chart data into its fixed-grid representation
-        fixed_grid_chart_data = chart_processor.convert_to_fixed_grid(abstime_chart_data, dm_cfg.grid_size)
+        # (4) convert the absolute-time chart data into an event-based format, where each event corresponds to a note onset or offset at an absolute time (seconds)
+        event_based_chart_data = chart_processor.convert_to_event_based(abstime_chart_data)
     
-        # (5) convert the fixed-grid chart data into event-based format, where each event corresponds to a change in the state of the chart (e.g., note on, note off, etc.)
-        event_based_chart_data = chart_processor.convert_to_event_based(fixed_grid_chart_data)
+        # (5) convert the event-based chart data into its fixed-grid representation
+        fixed_grid_chart_data = chart_processor.convert_to_fixed_grid(event_based_chart_data, grid_size=dm_cfg.time_step_size)
 
         # (6) chunk the fixed-grid chart data into overlapping windows based on data model context length (padding as necessary)
         #     resulting shape is (num_chunks, context_length, num_features)
-        chunked_chart_data = chart_processor.chunk_chart_data(event_based_chart_data, dm_cfg.context_length)
+        chunked_chart_data = chart_processor.chunk_chart_data(fixed_grid_chart_data, context_length=dm_cfg.window_size, overlap_length=dm_cfg.overlap_size)
 
-        # (7) save the chunked chart data to
+        # (7) tokenize the chunked chart data into a sequence of token IDs based on the data model's vocabulary mapping
+
+        # (8) save the chunked and tokenized chart data to a .npy file
 
     except Exception as e:
         log.error(f"Error processing song {song_id}: {format_exception(e)}")

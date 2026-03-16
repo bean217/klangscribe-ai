@@ -1,4 +1,28 @@
-# This is a placeholder for the data model configuration file.
-# It can be used to define the data preprocessing parameters for constructing a usable dataset for training KlangScribe models.
+# Template for overriding the default DataModelConfig parameters.
+# Copy this file, modify the values, and pass it to the CLI with:
+#
+#   python -m dataset_preprocessing.preprocessor data_model_config=<your_config_name>
+#
+# where <your_config_name> is the filename (without .yaml) placed in configs/data_model_config/.
 
-# TODO: Define the data model configuration
+# @package data_model_config
+
+# Number of fixed-grid ticks per chart window.
+# e.g., 100 ticks = 2 seconds at 50 ticks/sec (time_step_size=0.02)
+window_size: 100
+
+# Duration of each fixed-grid tick in seconds.
+# Must be compatible with `resolution` and `resolution_multiplier` such that
+# the resulting BPM has at most 3 decimal places:
+#   bpm = (resolution_multiplier * 60) / (time_step_size * resolution)
+time_step_size: 0.02
+
+# Ticks per quarter note (PPQN). Standard Clone Hero resolution is 480.
+resolution: 480
+
+# Target sample rate for audio processing (resampling, spectrogram generation, etc.)
+target_sample_rate: 24000
+
+# Multiplier applied to `resolution` during note quantization.
+# Increase for finer quantization without altering chart timing.
+resolution_multiplier: 1

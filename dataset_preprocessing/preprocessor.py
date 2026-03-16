@@ -125,14 +125,15 @@ def preprocess_dataset(cfg: PreprocessorConfig):
     log.info(f"Preprocessing dataset with input directory: {cfg.input_dir} and output directory: {cfg.output_dir}")
 
     # Preprocess each data split (train/val/test)
-    preprocess_split(cfg,split="train")
-    preprocess_split(cfg, split="val")
-    preprocess_split(cfg,split="test")
+    # preprocess_split(cfg, split="train")
+    # preprocess_split(cfg, split="val")
+    # preprocess_split(cfg, split="test")
 
 
-@hydra.main(version_base=None, config_name="preprocessor_config")
+@hydra.main(version_base=None, config_path="../configs", config_name="preprocessor_config")
 def main(cfg: PreprocessorConfig):
     log.info(OmegaConf.to_yaml(cfg))
+    cfg = OmegaConf.to_object(cfg)  # convert from omegaconf dict to dataclass object for easier access to config parameters in preprocessing logic
 
     # Add your preprocessing logic here
     log.info("Starting dataset preprocessing...")

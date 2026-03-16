@@ -1,0 +1,7 @@
+# @package data_model_config
+
+window_size: 100
+time_step_size: 0.02
+resolution: 480
+target_sample_rate: 24000
+resolution_multiplier: 1
